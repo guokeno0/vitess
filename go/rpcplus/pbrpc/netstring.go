@@ -2,6 +2,7 @@ package pbrpc
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -17,9 +18,9 @@ func WriteNetString(w io.Writer, data []byte) (written int, err error) {
 }
 
 // ReadNetString reads data from a big-endian netstring.
-func ReadNetString(r io.Reader) (data []byte, err error) {
+func ReadNetString(r io.Reader) ([]byte, error) {
 	sizeBuf := make([]byte, 4)
-	_, err = r.Read(sizeBuf)
+	_, err := r.Read(sizeBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -27,10 +28,12 @@ func ReadNetString(r io.Reader) (data []byte, err error) {
 	if size == 0 {
 		return nil, nil
 	}
-	data = make([]byte, size)
-	_, err = r.Read(data)
-	if err != nil {
-		return nil, err
+	data := make([]byte, size)
+	n, err := r.Read(data)
+	// Read() might successfully read 'size' bytes but return err = io.EOF.
+	// We only care whether we successfully read the number of bytes we expect.
+	if n != int(size) {
+		return nil, fmt.Errorf("unexpected EOF in ReadNetString, err = %v", err)
 	}
-	return
+	return data, nil
 }
